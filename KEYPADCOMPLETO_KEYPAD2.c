@@ -1,0 +1,248 @@
+#include <MKL25Z4.h>
+
+#define RS 0x04 /* PTA2 */
+#define EN 0x20 /* PTA5 */
+
+void delayMs(int n);
+void delayUs(int n);
+void keypad_init(void);
+char keypad_getkey(void);
+void LED_init(void);
+void LED_set(int value);
+
+// LCD
+void LCD_init(void);
+void LCD_command(unsigned char cmd);
+void LCD_data(unsigned char data);
+void LCD_printColor(int value);
+void LCD_nibble(unsigned char data);
+
+int main(void)
+{
+    SIM->SCGC6 |= 0x01000000;
+    SIM->SOPT2 |= 0x01000000;
+    TPM0->SC = 0;
+    TPM0->SC = 0x02;
+    TPM0->MOD = 0x2000;
+    TPM0->SC |= 0x80;
+    TPM0->SC |= 0x08;
+
+    unsigned char key;
+    int last_key = 0;
+
+    keypad_init();
+    LED_init();
+    LCD_init();
+
+    while(1)
+    {
+        key = keypad_getkey();
+
+        if (key != 0){
+
+            if(key == 13){
+                //CONFIRMAR → LEDs
+                LED_set(last_key);
+            }
+            else{
+                //PREVIEW → LCD
+                last_key = key;
+                LCD_printColor(key);
+            }
+
+            delayMs(200); // anti rebote
+        }
+    }
+}
+
+/* ---------- KEYPAD ---------- */
+
+void keypad_init(void)
+{
+    SIM->SCGC5 |= 0x0800;
+    for(int i=0;i<8;i++){
+        PORTC->PCR[i] = 0x103;
+    }
+    PTC->PDDR = 0x0F;
+}
+
+char keypad_getkey(void)
+{
+    int row, col;
+    const char row_select[] = {0x01, 0x02, 0x04, 0x08};
+
+    PTC->PDDR |= 0x0F;
+    PTC->PCOR = 0x0F;
+    delayUs(2);
+    col = PTC->PDIR & 0xF0;
+    PTC->PDDR = 0;
+
+    if (col == 0xF0) return 0;
+
+    for (row = 0; row < 4; row++)
+    {
+        PTC->PDDR = 0;
+        PTC->PDDR |= row_select[row];
+        PTC->PCOR = row_select[row];
+        delayUs(2);
+
+        col = PTC->PDIR & 0xF0;
+        if (col != 0xF0) break;
+    }
+
+    PTC->PDDR = 0;
+
+    if (row == 4) return 0;
+
+    if (col == 0xE0) return row*4+1;
+    if (col == 0xD0) return row*4+2;
+    if (col == 0xB0) return row*4+3;
+    if (col == 0x70) return row*4+4;
+
+    return 0;
+}
+
+/* ---------- LED ---------- */
+
+void LED_init(void)
+{
+    SIM->SCGC5 |= 0x400;
+    SIM->SCGC5 |= 0x1000;
+
+    PORTB->PCR[18] = 0x100;
+    PORTB->PCR[19] = 0x100;
+    PORTD->PCR[1]  = 0x100;
+
+    PTB->PDDR |= 0xC0000;
+    PTD->PDDR |= 0x02;
+
+    PTB->PSOR |= 0xC0000;
+    PTD->PSOR |= 0x02;
+}
+
+void LED_set(int value)
+{
+    if (value & 1)
+        PTB->PCOR = 0x40000;
+    else
+        PTB->PSOR = 0x40000;
+
+    if (value & 2)
+        PTB->PCOR = 0x80000;
+    else
+        PTB->PSOR = 0x80000;
+
+    if (value & 4)
+        PTD->PCOR = 0x02;
+    else
+        PTD->PSOR = 0x02;
+}
+
+/* ---------- LCD ---------- */
+
+void LCD_printColor(int value)
+{
+    LCD_command(1);
+    delayMs(5);
+    LCD_command(0x80);
+
+    if(value == 1 || value == 9){
+        LCD_data('R'); LCD_data('e'); LCD_data('d');
+    }
+    else if(value == 2 || value == 10){
+        LCD_data('G'); LCD_data('r'); LCD_data('e'); LCD_data('e'); LCD_data('n');
+    }
+    else if(value == 3 || value == 11){
+        LCD_data('Y'); LCD_data('e'); LCD_data('l'); LCD_data('l'); LCD_data('o'); LCD_data('w');
+    }
+    else if(value == 4 || value == 12){
+        LCD_data('B'); LCD_data('l'); LCD_data('u'); LCD_data('e');
+    }
+    else if(value == 5){
+        LCD_data('P'); LCD_data('i'); LCD_data('n'); LCD_data('k');
+    }
+    else if(value == 6 || value == 14){
+        LCD_data('C'); LCD_data('y'); LCD_data('a'); LCD_data('n');
+    }
+    else if(value == 7 || value == 15){
+        LCD_data('W'); LCD_data('h'); LCD_data('i'); LCD_data('t'); LCD_data('e');
+    }
+    else{
+        LCD_data('O'); LCD_data('f'); LCD_data('f');
+    }
+}
+
+void LCD_nibble(unsigned char data)
+{
+    PTD->PDOR = (PTD->PDOR & 0x0F) | (data & 0xF0);
+
+    PTA->PSOR = EN;
+    delayUs(5);
+    PTA->PCOR = EN;
+}
+
+void LCD_command(unsigned char cmd)
+{
+    PTA->PCOR = RS;
+    LCD_nibble(cmd);
+    LCD_nibble(cmd << 4);
+    delayMs(2);
+}
+
+void LCD_data(unsigned char data)
+{
+    PTA->PSOR = RS;
+    LCD_nibble(data);
+    LCD_nibble(data << 4);
+    delayMs(2);
+}
+
+void LCD_init(void)
+{
+    SIM->SCGC5 |= 0x1000;
+    PORTD->PCR[4] = 0x100;
+    PORTD->PCR[5] = 0x100;
+    PORTD->PCR[6] = 0x100;
+    PORTD->PCR[7] = 0x100;
+    PTD->PDDR |= 0xF0;
+
+    SIM->SCGC5 |= 0x0200;
+    PORTA->PCR[2] = 0x100;
+    PORTA->PCR[5] = 0x100;
+    PTA->PDDR |= (RS | EN);
+
+    delayMs(20);
+
+    LCD_nibble(0x30);
+    delayMs(5);
+    LCD_nibble(0x30);
+    delayUs(100);
+    LCD_nibble(0x30);
+    delayUs(100);
+    LCD_nibble(0x20);
+
+    LCD_command(0x28);
+    LCD_command(0x06);
+    LCD_command(0x01);
+    LCD_command(0x0F);
+}
+
+/* ---------- DELAYS ---------- */
+
+void delayUs(int n)
+{
+    int i;
+    for(i = 0; i < n; i++){
+        while((TPM0->SC & 0x80) == 0){}
+        TPM0->SC |= 0x80;
+    }
+}
+
+void delayMs(int n)
+{
+    int i;
+    for(i = 0; i < n; i++){
+        while((TPM0->SC & 0x80) == 0){}
+        TPM0->SC |= 0x80;
+    }
+}
