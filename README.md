@@ -90,6 +90,57 @@ El sistema debe utilizar un máximo de **16 pines GPIO**, lo cual implica optimi
 
 ---
 
+## ⚡ Optimización de la Interfaz LCD (Modo 4 bits)
+
+Para cumplir con la restricción de pines GPIO, se implementó la comunicación con la LCD en **modo de 4 bits**, en lugar del modo tradicional de 8 bits.
+
+### 🔍 Problema
+
+Una interfaz LCD en modo de 8 bits requiere:
+
+- 8 líneas de datos (D0–D7)  
+- Líneas de control adicionales (RS, E, RW)
+
+Esto incrementa significativamente el uso de pines GPIO.
+
+### 💡 Solución
+
+Se utilizó únicamente:
+
+- Los **4 bits más significativos (D4–D7)**  
+- Comunicación en **dos pasos (nibbles)** por cada dato
+
+### 🧠 ¿Cómo funciona?
+
+Cada byte (8 bits) se divide en dos partes:
+
+1. **Nibble alto (bits más significativos)**  
+2. **Nibble bajo (bits menos significativos)**  
+
+Y se envían en este orden:
+[ D7 D6 D5 D4 ] → [ D3 D2 D1 D0 ]
+
+### 🔄 Proceso de envío
+
+1. Se envía el nibble alto  
+2. Se genera un pulso en la señal **Enable (E)**  
+3. Se envía el nibble bajo  
+4. Se genera otro pulso en **Enable (E)**  
+
+### ✅ Ventajas
+
+- Reduce el uso de pines GPIO de **8 a 4 líneas de datos**  
+- Permite cumplir con la restricción de hardware  
+- Mantiene funcionalidad completa de la LCD  
+
+### ⚠️ Consideraciones
+
+- La comunicación es ligeramente más lenta (doble envío)  
+- Se requiere una correcta sincronización de señales  
+- Es necesario inicializar la LCD específicamente en modo 4 bits  
+
+---
+
 ## 🏗️ Arquitectura del Sistema
 
 ### 🔧 Hardware
