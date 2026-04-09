@@ -69,14 +69,14 @@ El sistema realiza las siguientes funciones:
 
 ## 🎨 Colores Implementados
 
-- 🔴 Rojo  
-- 🟢 Verde  
-- 🔵 Azul  
-- 🟡 Amarillo  
-- 🔷 Cian  
-- 🟣 Magenta  
-- ⚪ Blanco  
-- ⚫ Apagado  
+1- 🔴 Rojo  
+2- 🟢 Verde  
+3- 🔵 Azul  
+4- 🟡 Amarillo    
+5- 🟣 Magenta  
+6- 🔷 Cian
+7- ⚪ Blanco  
+8- ⚫ Apagado  
 
 ---
 
@@ -116,4 +116,49 @@ El menú permite al usuario:
 - Seleccionar un color  
 - Confirmar la selección mediante el keypad  
 
-### 📋 Ejemplo de menú
+
+---
+
+## 🔄 Flujo del Sistema
+
+1. Inicializar periféricos  
+2. Mostrar menú en LCD  
+3. Esperar entrada del usuario  
+4. Leer keypad  
+5. Procesar selección  
+6. Cambiar color del LED  
+7. Actualizar pantalla  
+
+---
+
+## 📦 Entrega Final
+
+### 👥 Modalidad
+
+Trabajo en equipo  
+
+### 📄 Entregables
+
+- Código funcional  
+- Diagrama de flujo  
+- Explicación del uso de pines  
+- Demostración del sistema  
+
+---
+
+## 📝 Criterios de Evaluación
+
+- ✔️ Funcionamiento correcto del sistema  
+- ✔️ Optimización en el uso de pines  
+- ✔️ Claridad en el diseño  
+- ✔️ Trabajo en equipo  
+
+---
+
+## 🚀 Notas adicionales
+
+- El sistema está diseñado para operar en tiempo real  
+- Se recomienda modularizar el código para facilitar pruebas y mantenimiento  
+- La correcta integración de hardware y software es clave para el funcionamiento  
+
+---
