@@ -1,0 +1,231 @@
+/* A to D conversion of channel 0
+ * This program converts the analog input from channel 0 *(PTE20) using software trigger continuously. PTE20 is *connected to an LM34 Fahrenheit temperature sensor.
+
+ * The conversion result is displayed as temperature
+ *through UART0 virtual serial port.
+ * 16-bit precision is used for conversion. At higher * *precision, the noise is more significant so 32 samples averaging is used.
+
+ * The LM34 output voltage is 10mV/degreeF. The ADC of FRDM-*KL25Z uses 3.3V as Vref so:
+ * temperature = result * 330.0 / 65536
+ * Open a terminal emulator at 115200 Baud rate at the host  PC and * observe the output. */
+
+#include "MKL25Z4.h"
+#include <stdio.h>
+#define RS 0x04 /* PTA2 */
+#define EN 0x20 /* PTA5 */
+
+void ADC0_init(void);
+void delayMs(int n);
+void delayUs(int n);
+//void UART0_init(void);
+void UART0Tx(char c);
+void UART0_puts(char *s);
+
+//LCD
+void LCD_printLuz(float value);
+void LCD_init(void);
+void LCD_command(unsigned char cmd);
+void LCD_data(unsigned char data);
+void LCD_nibble(unsigned char data);
+void TPM0_init(void);
+
+//Variables para timer
+
+volatile int contadorMs = 0;
+volatile int ledPrendido = 0;
+//volatile int nuevoCiclo = 0;
+
+int main(void) {
+
+	SIM -> SCGC5 |= 0x1000; //enable clock to Port d
+	PORTD -> PCR[1] = 0x100;//make PTD1 pin as GPIO
+	PTD -> PDDR |= 0X02;//make PTD1 pin as output
+
+	int result;
+	float luminosidad;
+	//float voltaje;
+	//char buffer[16];
+
+	ADC0_init(); /* Configure ADC0 */
+	//UART0_init(); /* initialize UART0 for output */
+
+	LCD_init();
+
+	TPM0_init();
+
+	while (1) {
+	    ADC0->SC1[0] = 0;
+	    while (!(ADC0->SC1[0] & 0x80)) { }
+	    result = ADC0->R[0];
+
+	    luminosidad = (result * 100.0) / 65535.0;
+	    LCD_printLuz(luminosidad);
+
+	    if (luminosidad < 50 && ledPrendido == 0) {
+	        // POCA LUZ: Mantener LED prendido y resetear contador
+	        PTD->PDOR &= ~0x02; // Prende LED (Lógica negativa usualmente)
+	        ledPrendido = 1;
+	        contadorMs = 0;     // No dejes que cuente mientras siga oscuro
+	        //nuevoCiclo = 0;
+	    }
+
+	    /*if(luminosidad >= 76){
+	    	nuevoCiclo = 1;
+	    }
+	    */
+
+	    delayMs(100); // Bajamos el delay para que el sensor responda más rápido
+	}
+
+
+		/* convert voltage to temperature */
+
+		//sprintf(buffer, "\r\nTemp = %6.2fF", temperature);
+		/* convert to string */
+
+		//UART0_puts(buffer);
+		/* send the string through UART0 for display */
+		delayMs(1000);
+	}
+
+
+void TPM0_init(void){
+	SIM -> SCGC6 |= 0x01000000; //clock TPM0
+	SIM -> SOPT2 |= 0x01000000; //clock source
+
+	TPM0 -> SC = 0; //detener timer
+
+	TPM0 -> MOD = 7500 - 1; //Un ms
+
+	TPM0 -> SC = 0x4F; //prescaler de 128
+
+	NVIC_EnableIRQ(TPM0_IRQn);
+
+	TPM0 -> SC |= 0X008; //iniciar timer
+}
+
+void TPM0_IRQHandler(void) {
+
+	if(TPM0 -> SC & 0x80){
+		TPM0->SC |= 0x80; // Limpiar bandera siempre al inicio
+
+		if (ledPrendido) {
+			contadorMs++;
+			if (contadorMs >= 100) {
+				PTD->PSOR = 0x02;    // APAGA el LED
+				ledPrendido = 0;
+				contadorMs = 0;
+			}
+        }
+    }
+}
+
+void ADC0_init(void) {
+	SIM->SCGC5 |= 0x2000; /* clock to PORTE */
+
+	PORTE->PCR[20] = 0; /* PTE20 analog input */
+
+	SIM->SCGC6 |= 0x8000000; /* clock to ADC0 */
+
+	ADC0->SC2 &= ~0x40; /* software trigger */
+
+	ADC0->SC3 |= 0x07; /* 32 samples average */
+
+	/* clock div by 4, long sample time, single ended 16 bit, bus clock */
+
+	ADC0->CFG1 = 0x40 | 0x10 | 0x0C | 0x00;
+}
+
+void LCD_printLuz(float value)
+{
+    int entero = (int)value;
+    int decimal = (int)((value - entero) * 100);
+
+    LCD_command(0x80);
+
+    // "Luz:"
+    LCD_data('L');
+    LCD_data('u');
+    LCD_data('z');
+    LCD_data(':');
+
+    // Parte entera
+    LCD_data((entero / 10) + '0');   // decenas
+    LCD_data((entero % 10) + '0');   // unidades
+
+    // Punto
+    LCD_data('.');
+
+    // Parte decimal
+    LCD_data((decimal / 10) + '0');
+    LCD_data((decimal % 10) + '0');
+}
+
+
+void LCD_nibble(unsigned char data)
+{
+    PTD->PDOR = (PTD->PDOR & 0x0F) | (data & 0xF0);
+
+    PTA->PSOR = EN;
+    delayUs(5);
+    PTA->PCOR = EN;
+}
+
+void LCD_command(unsigned char cmd)
+{
+    PTA->PCOR = RS;
+    LCD_nibble(cmd);
+    LCD_nibble(cmd << 4);
+    delayMs(2);
+}
+
+void LCD_data(unsigned char data)
+{
+    PTA->PSOR = RS;
+    LCD_nibble(data);
+    LCD_nibble(data << 4);
+    delayMs(2);
+}
+
+void LCD_init(void)
+{
+    SIM->SCGC5 |= 0x1000;
+    PORTD->PCR[4] = 0x100;
+    PORTD->PCR[5] = 0x100;
+    PORTD->PCR[6] = 0x100;
+    PORTD->PCR[7] = 0x100;
+    PTD->PDDR |= 0xF0;
+
+    SIM->SCGC5 |= 0x0200;
+    PORTA->PCR[2] = 0x100;
+    PORTA->PCR[5] = 0x100;
+    PTA->PDDR |= (RS | EN);
+
+    delayMs(20);
+
+    LCD_nibble(0x30);
+    delayMs(5);
+    LCD_nibble(0x30);
+    delayUs(100);
+    LCD_nibble(0x30);
+    delayUs(100);
+    LCD_nibble(0x20);
+
+    LCD_command(0x28);
+    LCD_command(0x06);
+    LCD_command(0x01);
+    LCD_command(0x0F);
+}
+
+//Delays
+
+void delayMs(int n){
+    int i,j;
+    for(i=0;i<n;i++)
+        for(j=0;j<7000;j++);
+}
+
+void delayUs(int n){
+    int i;
+    for(i=0;i<n*10;i++);
+}
