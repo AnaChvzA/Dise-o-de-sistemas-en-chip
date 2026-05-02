@@ -1,0 +1,65 @@
+import matplotlib
+matplotlib.use('TkAgg')  
+import serial
+import matplotlib.pyplot as plt
+import numpy as np
+
+#CONFIG 
+PORT = 'COM4'     # COM de compu Ana
+BAUD = 9600
+MAX_STEPS = 530   # igual que en C
+
+#UART
+ser = serial.Serial(PORT, BAUD, timeout=1)
+
+#GRAFICAR
+plt.ion()
+fig = plt.figure()
+ax = fig.add_subplot(111, polar=True)
+
+angles = []
+distances = []
+
+while True:
+    try:
+        line = ser.readline().decode(errors='ignore').strip()
+
+        if not line:
+            continue
+
+        #PARSE 
+        position, distance = map(float, line.split(','))
+
+        #CONVERSIÓN
+        angle_deg = (position / MAX_STEPS) * 180
+        angle_rad = np.deg2rad(angle_deg)
+
+        #GUARDAR
+        angles.append(angle_rad)
+        distances.append(distance)
+
+        if len(angles) > 300:
+            angles.pop(0)
+            distances.pop(0)
+
+        #DIBUJAR
+        ax.clear()
+
+        ax.set_theta_zero_location("N")
+        ax.set_theta_direction(-1)
+
+        ax.set_thetamin(0)
+        ax.set_thetamax(180)
+
+        ax.set_rmax(200)
+
+        # puntos detectados
+        ax.scatter(angles, distances, s=10)
+
+        # línea tipo radar
+        ax.plot([angle_rad, angle_rad], [0, 200])
+
+        plt.pause(0.01)
+
+    except Exception as e:
+        print("Error:", e)
