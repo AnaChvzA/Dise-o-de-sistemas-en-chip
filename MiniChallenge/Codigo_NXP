@@ -1,0 +1,166 @@
+#include <MKL25Z4.H>
+#include <stdio.h>
+
+void delay_us(int n);
+void delay_ms(int n);
+unsigned int measure_distance(void);
+void UART0_init(void);
+void UART0_transmit(char data);
+void UART0_print(char *str);
+void stepMotor(int step);
+
+/* Secuencia medio paso */
+unsigned char steps[8] = {
+    0x01,
+    0x03,
+    0x02,
+    0x06,
+    0x04,
+    0x0C,
+    0x08,
+    0x09
+};
+
+int main(void) {
+
+    int stepIndex = 0;
+    int position = 0;
+    int direction = 1;
+
+    int maxSteps = 530;
+
+    unsigned int distance;
+    char buffer[50];
+
+    //Motor
+    SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
+
+    PORTD->PCR[0] = PORT_PCR_MUX(1);
+    PORTD->PCR[1] = PORT_PCR_MUX(1);
+    PORTD->PCR[2] = PORT_PCR_MUX(1);
+    PORTD->PCR[3] = PORT_PCR_MUX(1);
+
+    PTD->PDDR |= 0x0F;
+
+    //Ultrasonico
+    SIM->SCGC5 |= SIM_SCGC5_PORTB_MASK;
+
+    PORTB->PCR[0] = PORT_PCR_MUX(1); // TRIG
+    PORTB->PCR[1] = PORT_PCR_MUX(1); // ECHO
+
+    PTB->PDDR |= (1 << 0);
+    PTB->PDDR &= ~(1 << 1);
+
+    //UART
+    UART0_init();
+
+    while(1) {
+
+        //Motor a paso
+        stepMotor(stepIndex);
+
+
+        delay_ms(2);
+
+        //Secuencia
+        stepIndex += direction;
+
+        if(stepIndex > 7) stepIndex = 0;
+        if(stepIndex < 0) stepIndex = 7;
+
+        //Posicion fisica
+        position += direction;
+
+        // Reversa
+        if(position >= maxSteps) {
+            direction = -1;
+        }
+
+        if(position <= 0) {
+            direction = 1;
+        }
+
+        //Distancia
+        distance = measure_distance();
+
+        // Angulo + distancia
+        sprintf(buffer, "%d,%d\r\n", position, distance);
+
+        UART0_print(buffer);
+    }
+}
+
+
+void stepMotor(int step) {
+    PTD->PCOR = 0x0F;
+    PTD->PSOR = steps[step];
+}
+
+//Medidas Ultrasonico
+unsigned int measure_distance(void) {
+
+    unsigned int time = 0;
+
+    PTB->PCOR = (1 << 0);
+    delay_us(2);
+
+    PTB->PSOR = (1 << 0);
+    delay_us(10);
+    PTB->PCOR = (1 << 0);
+
+    while(!(PTB->PDIR & (1 << 1)));
+
+    while(PTB->PDIR & (1 << 1)) {
+        delay_us(1);
+        time++;
+    }
+
+    return (time / 58);
+}
+
+// UART init
+void UART0_init(void) {
+
+    SIM->SCGC4 |= SIM_SCGC4_UART0_MASK;
+    SIM->SCGC5 |= SIM_SCGC5_PORTA_MASK;
+
+    PORTA->PCR[1] = PORT_PCR_MUX(2); // RX
+    PORTA->PCR[2] = PORT_PCR_MUX(2); // TX
+
+    SIM->SOPT2 |= SIM_SOPT2_UART0SRC(1);
+
+    UART0->C2 = 0;
+    UART0->BDH = 0x00;
+    UART0->BDL = 0x88;
+    UART0->C4 = 0x0F;
+
+    UART0->C2 |= UART0_C2_TE_MASK;
+}
+
+// UART mandar un char
+void UART0_transmit(char data) {
+    while(!(UART0->S1 & UART_S1_TDRE_MASK));
+    UART0->D = data;
+}
+
+// UART mandar un string
+void UART0_print(char *str) {
+    while(*str) {
+        UART0_transmit(*str++);
+    }
+}
+
+
+void delay_us(int n) {
+    volatile int i;
+    while(n--) {
+        for(i = 0; i < 7; i++);
+    }
+}
+
+
+void delay_ms(int n) {
+    while(n--) {
+        delay_us(1000);
+    }
+}
