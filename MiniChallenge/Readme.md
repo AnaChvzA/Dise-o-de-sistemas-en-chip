@@ -61,11 +61,11 @@ El sistema funciona como un radar básico:
 
 ---
 
-## ⚡ Uso del Driver L293D
+### ⚡ Uso del Driver L293D
 
 El **L293D** es un puente H que permite controlar motores desde el microcontrolador.
 
-# ¿Por qué es necesario?
+### ¿Por qué es necesario?
 
 El microcontrolador:
 
