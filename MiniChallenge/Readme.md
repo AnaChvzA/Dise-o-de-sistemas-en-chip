@@ -2,7 +2,7 @@
 
 **Institución:** ITESM - Campus Guadalajara  
 **Proyecto:** Challenge de Sistemas Embebidos  
-**Fecha:** 2026  
+**Fecha:** Abril 2026  
 
 ---
 
