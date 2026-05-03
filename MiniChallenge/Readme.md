@@ -56,8 +56,38 @@ El sistema funciona como un radar básico:
 - FRDM-KL25Z  
 - Sensor ultrasónico (HC-SR04 o similar)  
 - Motor a pasos  
-- Driver de motor  
+- Driver L293D (puente H)
 - Cables de conexión  
+
+---
+
+## ⚡ Uso del Driver L293D
+
+El **L293D** es un puente H que permite controlar motores desde el microcontrolador.
+
+# ¿Por qué es necesario?
+
+El microcontrolador:
+
+-  No puede suministrar suficiente corriente  
+-  No puede manejar directamente el motor  
+
+El L293D:
+-  Amplifica la señal  
+-  Permite controlar dirección  
+-  Protege el microcontrolador  
+
+---
+
+### 🔌 Conexión básica
+
+| FRDM-KL25Z | L293D | Motor |
+|----------|------|------|
+| PTD0–PTD3 | Entradas | Bobinas |
+| Vcc | Alimentación lógica | — |
+| GND | Tierra común | — |
+
+---
 
 ### Software
 
