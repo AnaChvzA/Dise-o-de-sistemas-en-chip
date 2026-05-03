@@ -165,7 +165,7 @@ MAX_STEPS = 530
 ``` id="python_config"
 
 ---
-
+```
 ## 🧪 Aprendizajes clave
 
 - Control de motores a pasos  
@@ -177,21 +177,3 @@ MAX_STEPS = 530
 
 ---
 
-## 🚀 Posibles mejoras
-
-- 🔥 Radar 360°  
-- 📡 Filtrado de ruido  
-- 🎯 Detección de objetos  
-- 📈 Guardado de datos  
-- 🎨 Interfaz gráfica más avanzada  
-
----
-
-## 📝 Notas adicionales
-
-- El sistema funciona en tiempo real  
-- La precisión depende del sensor y temporización  
-- El uso de medio paso mejora la resolución  
-- Python permite una visualización dinámica y clara  
-
----
