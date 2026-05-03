@@ -131,8 +131,8 @@ El script en Python:
   /       \
  •   •      •
       |
-``` id="radar_ascii"
-
+ id="radar_ascii"
+```
 ---
 
 ## 🔄 Flujo del sistema
