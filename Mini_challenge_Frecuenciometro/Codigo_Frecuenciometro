@@ -1,0 +1,230 @@
+#include <MKL25Z4.h>
+#include <stdio.h>
+
+#define RS 0x04      // PTA2
+#define EN 0x20      // PTA5
+
+//Nota: Tiene error de +- 1
+
+void delayMs(int n);
+void delayUs(int n);
+
+void LCD_init(void);
+void LCD_command(unsigned char cmd);
+void LCD_data(unsigned char data);
+void LCD_nibble(unsigned char data);
+void LCD_string(char *str);
+
+void TPM0_InputCapture_Init(void);
+
+uint32_t medirFrecuencia(void);
+
+volatile uint32_t periodo = 0;
+
+void delayMs(int n)
+{
+    int i;
+
+    SysTick->LOAD = 48000 - 1;
+    SysTick->VAL = 0;
+    SysTick->CTRL = 5;
+
+    for(i = 0; i < n; i++)
+    {
+        while((SysTick->CTRL & 0x10000) == 0){}
+    }
+
+    SysTick->CTRL = 0;
+}
+
+void delayUs(int n)
+{
+    int i;
+
+    SysTick->LOAD = 48 - 1;
+    SysTick->VAL = 0;
+    SysTick->CTRL = 5;
+
+    for(i = 0; i < n; i++)
+    {
+        while((SysTick->CTRL & 0x10000) == 0){}
+    }
+
+    SysTick->CTRL = 0;
+}
+
+void LCD_nibble(unsigned char data)
+{
+    PTD->PCOR = 0xF0;
+
+    PTD->PSOR = (data & 0xF0);
+
+    PTA->PSOR = EN;
+
+    delayUs(1);
+
+    PTA->PCOR = EN;
+}
+
+void LCD_command(unsigned char cmd)
+{
+    PTA->PCOR = RS;
+
+    LCD_nibble(cmd);
+
+    LCD_nibble(cmd << 4);
+
+    delayMs(2);
+}
+
+void LCD_data(unsigned char data)
+{
+    PTA->PSOR = RS;
+
+    LCD_nibble(data);
+
+    LCD_nibble(data << 4);
+
+    delayMs(2);
+}
+
+void LCD_string(char *str)
+{
+    while(*str)
+    {
+        LCD_data(*str++);
+    }
+}
+
+void LCD_init(void)
+{
+    SIM->SCGC5 |= SIM_SCGC5_PORTA_MASK;
+    SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
+
+    PORTD->PCR[4] = PORT_PCR_MUX(1);
+    PORTD->PCR[5] = PORT_PCR_MUX(1);
+    PORTD->PCR[6] = PORT_PCR_MUX(1);
+    PORTD->PCR[7] = PORT_PCR_MUX(1);
+
+    PTD->PDDR |= 0xF0;
+
+    PORTA->PCR[2] = PORT_PCR_MUX(1);
+    PORTA->PCR[5] = PORT_PCR_MUX(1);
+
+    PTA->PDDR |= (RS | EN);
+
+    delayMs(20);
+
+    LCD_nibble(0x30);
+    delayMs(5);
+
+    LCD_nibble(0x30);
+    delayUs(100);
+
+    LCD_nibble(0x30);
+    delayUs(100);
+
+    LCD_nibble(0x20);
+
+    LCD_command(0x28);
+
+    LCD_command(0x06);
+
+    LCD_command(0x0C);
+
+    LCD_command(0x01);
+
+    delayMs(5);
+}
+
+void TPM0_InputCapture_Init(void)
+{
+    // Clock TPM0
+    SIM->SCGC6 |= SIM_SCGC6_TPM0_MASK;
+
+    // Clock PORTC
+    SIM->SCGC5 |= SIM_SCGC5_PORTC_MASK;
+
+    // TPM source
+    SIM->SOPT2 |= SIM_SOPT2_TPMSRC(1);
+
+    // PTC1 = TPM0_CH0
+    PORTC->PCR[1] = PORT_PCR_MUX(4);
+
+    TPM0->SC = 0;
+
+    TPM0->CNT = 0;
+
+    TPM0->MOD = 0xFFFF;
+
+    // Flanco positivo
+    TPM0->CONTROLS[0].CnSC =
+        TPM_CnSC_ELSA_MASK;
+
+    // Prescaler 128
+    TPM0->SC =
+        TPM_SC_PS(7) |
+        TPM_SC_CMOD(1);
+}
+
+uint32_t medirFrecuencia(void)
+{
+    static uint32_t capturaAnterior = 0;
+
+    static uint32_t ultimaFrecuencia = 0;
+
+    uint32_t capturaActual;
+
+    if(TPM0->CONTROLS[0].CnSC & TPM_CnSC_CHF_MASK)
+    {
+        capturaActual = TPM0->CONTROLS[0].CnV;
+
+        // limpiar flag
+        TPM0->CONTROLS[0].CnSC |= TPM_CnSC_CHF_MASK;
+
+        if(capturaActual >= capturaAnterior)
+        {
+            periodo = capturaActual - capturaAnterior;
+        }
+        else
+        {
+            periodo = (65535 - capturaAnterior)
+                       + capturaActual;
+        }
+
+        capturaAnterior = capturaActual;
+
+        if(periodo > 0 && periodo < 5000)
+        {
+            ultimaFrecuencia =
+                163828 / periodo;
+        }
+    }
+
+    return ultimaFrecuencia;
+}
+
+
+int main(void)
+{
+    char texto[16];
+
+    uint32_t frecuencia;
+
+    LCD_init();
+
+    TPM0_InputCapture_Init();
+
+    while(1)
+    {
+        frecuencia = medirFrecuencia();
+
+        LCD_command(0x80);
+
+        sprintf(texto,"Freq:%lu Hz ",frecuencia);
+
+        LCD_string(texto);
+
+        delayMs(300);
+    }
+}
