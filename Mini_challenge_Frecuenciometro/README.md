@@ -145,14 +145,15 @@ Cada byte se divide en dos nibbles:
 [ D7 D6 D5 D4 ] → [ D3 D2 D1 D0 ]
 
 🔄 Flujo General del Sistema
-Inicializar LCD
-Configurar TPM0 Input Capture
-Esperar flanco positivo
-Capturar tiempo
-Calcular período
-Obtener frecuencia
-Mostrar resultado en LCD
-Repetir proceso
+ Inicializar LCD
+ Configurar TPM0 Input Capture
+ Esperar flanco positivo
+ Capturar tiempo
+ Calcular período
+ Obtener frecuencia
+ Mostrar resultado en LCD
+ Repetir proceso
+ 
 
 📊 Arquitectura del sistema
 Señal externa
