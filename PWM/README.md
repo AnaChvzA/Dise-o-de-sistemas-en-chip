@@ -161,17 +161,18 @@ Configuración:
 Edge-aligned PWM
 Pulse High
 
-# 🔄 Flujo del sistema
-Parte 1
-Configurar TPM0
-Definir MOD
-Calcular CnV
-Generar PWM
-Observar intensidad LED
-Parte 2
-Inicializar PWM
-Incrementar CnV
-Actualizar duty cycle
-Esperar 20 ms
-Repetir proceso
+## 🔄 Flujo del sistema
+# Parte 1
+- Configurar TPM0
+- Definir MOD
+- Calcular CnV
+- Generar PWM
+- Observar intensidad LED
+  
+# Parte 2
+- Inicializar PWM
+- Incrementar CnV
+- Actualizar duty cycle
+- Esperar 20 ms
+- Repetir proceso
 
