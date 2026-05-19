@@ -107,8 +107,10 @@ Este valor genera una frecuencia de:
 # 📊 Cálculo del Duty Cycle
 Fórmula utilizada
 CnV = DutyCycle × MOD
+
 📋 Valores calculados
-Duty Cycle	Valor CnV
+
+- Duty Cycle	Valor CnV
 - 0%	            0
 - 25%	          10925
 - 50%	          21851
