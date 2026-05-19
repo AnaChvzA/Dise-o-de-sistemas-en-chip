@@ -82,11 +82,11 @@ Se configuró TPM0 para generar una señal PWM de:
 
 con diferentes duty cycles:
 
-0%
-25%
-50%
-75%
-100%
+- 0%
+- 25%
+- 50%
+- 75%
+- 100%
 
 # ⚙️ Configuración del PWM
 Clock del TPM0
@@ -109,11 +109,11 @@ Fórmula utilizada
 CnV = DutyCycle × MOD
 📋 Valores calculados
 Duty Cycle	Valor CnV
-0%	            0
-25%	          10925
-50%	          21851
-75%	          32776
-100%	        43702
+- 0%	            0
+- 25%	          10925
+- 50%	          21851
+- 75%	          32776
+- 100%	        43702
 
 # 💡 Comportamiento del LED
 
@@ -151,8 +151,8 @@ Esto genera un efecto visual de:
 
 Fade In / Fade Out
 # ⚙️ Configuración TPM0
-Modo PWM
-TPM0->CONTROLS[1].CnSC = 0x20 | 0x08;
+- Modo PWM
+- TPM0->CONTROLS[1].CnSC = 0x20 | 0x08;
 
 Configuración:
 
