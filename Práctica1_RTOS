@@ -1,0 +1,342 @@
+/* =========================================
+ * FreeRTOS Stage 1
+ * FRDM-KL25Z
+ * 2 Potenciometros + Pushbutton PTB0
+ * LED RGB integrado funcional
+ * ========================================= */
+
+#include "FreeRTOS.h"
+#include "task.h"
+
+#include "MKL25Z4.h"
+
+#include "fsl_debug_console.h"
+
+#include "board.h"
+#include "pin_mux.h"
+#include "clock_config.h"
+
+/* =========================================
+ * Variables globales
+ * ========================================= */
+
+volatile uint16_t light_value = 0;
+volatile uint16_t temp_value = 0;
+volatile uint8_t button_pressed = 0;
+
+/* =========================================
+ * Prototipos
+ * ========================================= */
+
+void ADC0_Init(void);
+
+uint16_t Read_ADC(uint8_t channel);
+
+void Button_Init(void);
+
+void RGB_LED_Init(void);
+
+void vTaskLightSensor(void *pvParameters);
+void vTaskTemperatureSensor(void *pvParameters);
+void vTaskButtonPolling(void *pvParameters);
+void vTaskLedControl(void *pvParameters);
+void vTaskSerialMonitor(void *pvParameters);
+
+/* =========================================
+ * MAIN
+ * ========================================= */
+
+int main(void)
+{
+    BOARD_InitBootPins();
+    BOARD_InitBootClocks();
+
+    BOARD_InitDebugConsole();
+
+    /* =====================================
+     * Configurar pines analógicos
+     * PTE20 -> ADC0_SE0
+     * PTE21 -> ADC0_SE4a
+     * ===================================== */
+
+    SIM->SCGC5 |= SIM_SCGC5_PORTE_MASK;
+
+    PORTE->PCR[20] = 0;
+    PORTE->PCR[21] = 0;
+
+    /* Inicializaciones */
+
+    ADC0_Init();
+
+    Button_Init();
+
+    RGB_LED_Init();
+
+    /* =====================================
+     * Crear tareas
+     * ===================================== */
+
+    xTaskCreate(vTaskLightSensor,
+                "Light",
+                500,
+                NULL,
+                1,
+                NULL);
+
+    xTaskCreate(vTaskTemperatureSensor,
+                "Temp",
+                500,
+                NULL,
+                1,
+                NULL);
+
+    xTaskCreate(vTaskButtonPolling,
+                "Button",
+                500,
+                NULL,
+                1,
+                NULL);
+
+    xTaskCreate(vTaskLedControl,
+                "LED",
+                500,
+                NULL,
+                1,
+                NULL);
+
+    xTaskCreate(vTaskSerialMonitor,
+                "UART",
+                700,
+                NULL,
+                1,
+                NULL);
+
+    /* Iniciar scheduler */
+
+    vTaskStartScheduler();
+
+    while(1)
+    {
+    }
+}
+
+/* =========================================
+ * ADC INIT
+ * ========================================= */
+
+void ADC0_Init(void)
+{
+    /* Activar reloj ADC0 */
+
+    SIM->SCGC6 |= SIM_SCGC6_ADC0_MASK;
+
+    /* Configuración ADC */
+
+    ADC0->CFG1 =
+            ADC_CFG1_MODE(2) |      /* 10 bits */
+            ADC_CFG1_ADIV(1) |      /* Divide clock by 2 */
+            ADC_CFG1_ADICLK(0);     /* Bus clock */
+
+    ADC0->SC2 = 0;
+
+    ADC0->SC3 = 0;
+}
+
+/* =========================================
+ * READ ADC
+ * ========================================= */
+
+uint16_t Read_ADC(uint8_t channel)
+{
+    ADC0->SC1[0] = channel;
+
+    while(!(ADC0->SC1[0] & ADC_SC1_COCO_MASK))
+    {
+    }
+
+    return ADC0->R[0];
+}
+
+/* =========================================
+ * BUTTON INIT
+ * PTB0
+ * Pull-up interno
+ * ========================================= */
+
+void Button_Init(void)
+{
+    /* Activar reloj PORTB */
+
+    SIM->SCGC5 |= SIM_SCGC5_PORTB_MASK;
+
+    /* PTB0 GPIO + pull-up */
+
+    PORTB->PCR[0] =
+            PORT_PCR_MUX(1) |
+            PORT_PCR_PE_MASK |
+            PORT_PCR_PS_MASK;
+
+    /* Entrada */
+
+    PTB->PDDR &= ~(1 << 0);
+}
+
+/* =========================================
+ * RGB LED INIT
+ * ========================================= */
+
+void RGB_LED_Init(void)
+{
+    /* Clocks */
+
+    SIM->SCGC5 |= SIM_SCGC5_PORTB_MASK;
+    SIM->SCGC5 |= SIM_SCGC5_PORTD_MASK;
+
+    /* =====================================
+     * LED ROJO -> PTB18
+     * LED VERDE -> PTB19
+     * LED AZUL -> PTD1
+     * ===================================== */
+
+    PORTB->PCR[18] = PORT_PCR_MUX(1);
+    PORTB->PCR[19] = PORT_PCR_MUX(1);
+    PORTD->PCR[1]  = PORT_PCR_MUX(1);
+
+    /* Outputs */
+
+    PTB->PDDR |= (1 << 18);
+    PTB->PDDR |= (1 << 19);
+    PTD->PDDR |= (1 << 1);
+
+    /* OFF initially
+     * LEDs active LOW
+     */
+
+    PTB->PSOR = (1 << 18);
+    PTB->PSOR = (1 << 19);
+    PTD->PSOR = (1 << 1);
+}
+
+/* =========================================
+ * TASK SENSOR LUZ
+ * PTE20 -> ADC0_SE0
+ * ========================================= */
+
+void vTaskLightSensor(void *pvParameters)
+{
+    for(;;)
+    {
+        light_value = Read_ADC(0);
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+/* =========================================
+ * TASK SENSOR TEMPERATURA
+ * PTE21 -> ADC0_SE4a
+ * ========================================= */
+
+void vTaskTemperatureSensor(void *pvParameters)
+{
+    for(;;)
+    {
+        temp_value = Read_ADC(4);
+
+        vTaskDelay(pdMS_TO_TICKS(500));
+    }
+}
+
+/* =========================================
+ * TASK BUTTON
+ * PTB0
+ * ========================================= */
+
+void vTaskButtonPolling(void *pvParameters)
+{
+    for(;;)
+    {
+        /* Pull-up:
+         * Presionado = 0
+         */
+
+        if((PTB->PDIR & (1 << 0)) == 0)
+        {
+            button_pressed = 1;
+        }
+        else
+        {
+            button_pressed = 0;
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(50));
+    }
+}
+
+/* =========================================
+ * TASK LEDs
+ * ========================================= */
+
+void vTaskLedControl(void *pvParameters)
+{
+    for(;;)
+    {
+        /* =================================
+         * LED ROJO -> sensor luz
+         * ================================= */
+
+        if(light_value > 500)
+        {
+            PTB->PCOR = (1 << 18); /* ON */
+        }
+        else
+        {
+            PTB->PSOR = (1 << 18); /* OFF */
+        }
+
+        /* =================================
+         * LED AZUL -> temperatura
+         * ================================= */
+
+        if(temp_value > 500)
+        {
+            PTD->PCOR = (1 << 1); /* ON */
+        }
+        else
+        {
+            PTD->PSOR = (1 << 1); /* OFF */
+        }
+
+        /* =================================
+         * LED VERDE -> botón
+         * ================================= */
+
+        if(button_pressed)
+        {
+            PTB->PCOR = (1 << 19); /* ON */
+        }
+        else
+        {
+            PTB->PSOR = (1 << 19); /* OFF */
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(200));
+    }
+}
+
+/* =========================================
+ * TASK UART
+ * ========================================= */
+
+void vTaskSerialMonitor(void *pvParameters)
+{
+    for(;;)
+    {
+        PRINTF("Light: %4d | Temp: %4d | Button: %d\r\n",
+               light_value,
+               temp_value,
+               button_pressed);
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
+    }
+}
