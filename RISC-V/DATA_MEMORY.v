@@ -10,7 +10,7 @@ module DATA_MEMORY (
 	output [31:0] RD
 );
 
-reg [31:0] mem [0:63];
+reg [31:0] mem [0:2];
 
 initial begin
 	$readmemh("mem.hex", mem); //Archivo en carpeta se llama mem.hex 
