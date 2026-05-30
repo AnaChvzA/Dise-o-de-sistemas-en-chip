@@ -3,7 +3,7 @@ module instruction_memory (
 	output [31:0] RD
 );
 
-reg [31:0] instr_mem [0:63];
+	reg [31:0] instr_mem [0:2];
 
 initial begin
 	$readmemh("instrMem.hex", instr_mem);
