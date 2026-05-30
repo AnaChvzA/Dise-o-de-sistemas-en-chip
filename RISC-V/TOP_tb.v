@@ -13,6 +13,8 @@ TOP uut (
 	.RegWrite()
 );
 
+//Debería de salir en el REG[10] = 15, REG[6] = 10 y en el REG[5] = 5
+
 initial begin
 	clk = 0;
 	repeat(300) #5 clk = ~clk;
