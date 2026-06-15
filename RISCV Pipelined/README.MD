@@ -153,6 +153,10 @@ Para correr la simulación:
   <img src="imagenes/simulation.png" width="800">
 </p>
 
+<p align="center">
+  <img src="imagenes/simulation2.png" width="800">
+</p>
+
 ---
 
 ## Notas de implementación
