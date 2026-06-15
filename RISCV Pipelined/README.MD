@@ -147,6 +147,14 @@ Para correr la simulación:
 
 ---
 
+### Resultado de simulación
+
+<p align="center">
+  <img src="imagenes/simulation.png" width="800">
+</p>
+
+---
+
 ## Notas de implementación
 
 - El mux parametrizable (`mux.v`) usa `mux_in[sel*32 +: 32]` para selección por índice, por lo que el orden de concatenación en `mux_in` importa: el primer elemento en la concatenación (`{}`) ocupa los bits más altos y corresponde al selector más alto.
@@ -160,3 +168,5 @@ Para correr la simulación:
 - **Lenguaje:** Verilog (IEEE 1364-2001)
 - **Simulador:** Questa Altera Starter FPGA Edition 2025.2
 - **ISA:** RISC-V RV32I (subconjunto)
+
+
