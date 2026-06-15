@@ -5,33 +5,21 @@ module Pipelined_tb();
 reg clk;
 reg rst;
 
-//================================================
-// DUT
-//================================================
 
 Pipelined DUT(
     .clk(clk),
     .rst(rst)
 );
 
-//================================================
-// CLOCK
-//================================================
 
 initial
 begin
     clk = 1'b0;
 end
-
 always #5 clk = ~clk;
-
-//================================================
-// RESET
-//================================================
 
 initial
 begin
-
     rst = 1'b1;
     @(posedge clk);  // espera posedge
     @(posedge clk);  // dos ciclos completos en reset
@@ -41,9 +29,7 @@ begin
 
 end
 
-//================================================
 // MONITOR PRINCIPAL
-//================================================
 
 always @(posedge clk)
 begin
